@@ -597,6 +597,72 @@ async function handleToken(token) {
       showGameScreen(data.user);
       initChessGame();
     } else {
+<script>
+// ── Config ────────────────────────────────────────────────────────────────
+const AUTH_WORKER_URL = 'https://regis-auth.kerosoftz522.workers.dev';
+const GAME_WORKER_URL = 'https://regis-game.kerosoftz522.workers.dev';
+const GOOGLE_CLIENT_ID = '103731782063-pe7mp4473vdd4jehtjbpq2lmd8qs0u19.apps.googleusercontent.com';
+
+// ── Auth State ────────────────────────────────────────────────────────────
+let currentUser = null;
+let authToken = null;
+
+function showAuthScreen() {
+  document.getElementById('auth-screen').classList.remove('hidden');
+  document.getElementById('game-screen').style.display = 'none';
+}
+
+async function showGameScreen(user) {
+  document.getElementById('auth-screen').classList.add('hidden');
+  document.getElementById('game-screen').style.display = 'flex';
+  currentUser = user;
+  // Load full game profile from game worker
+  try {
+    const res = await fetch(`${GAME_WORKER_URL}/game/profile`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    const data = await res.json();
+    if (data.profile) {
+      const p = data.profile;
+      // Restore progress
+      unlockedUpTo = p.unlockedUpTo || 1;
+      beaten = p.beaten || Array(10).fill(false);
+      currentLevel = Math.min(p.currentLevel || 1, p.unlockedUpTo || 1);
+      // Update UI
+      document.getElementById('user-name').textContent = p.name || p.email;
+      document.getElementById('user-elo').textContent = `ELO ${p.elo || 1000}`;
+      document.getElementById('player-display-name').textContent = (p.name || 'YOU').split(' ')[0].toUpperCase();
+      if (p.avatar) {
+        document.getElementById('user-avatar').src = p.avatar;
+        const wrap = document.getElementById('player-avatar-wrap');
+        wrap.innerHTML = `<img src="${p.avatar}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.parentElement.textContent='👤'"/>`;
+      }
+    }
+  } catch(e) {
+    // Fallback to basic user info from JWT
+    document.getElementById('user-name').textContent = user.name || user.email;
+    document.getElementById('user-elo').textContent = `ELO 1000`;
+    document.getElementById('player-display-name').textContent = (user.name || 'YOU').split(' ')[0].toUpperCase();
+  }
+  initChessGame();
+}
+
+function setAuthLoading(on) {
+  document.getElementById('auth-loading').className = 'auth-loading' + (on ? ' show' : '');
+  document.getElementById('auth-buttons').style.display = on ? 'none' : 'flex';
+}
+
+async function handleToken(token) {
+  authToken = token;
+  localStorage.setItem('regizs_token', token);
+  try {
+    const res = await fetch(`${AUTH_WORKER_URL}/auth/profile`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (data.user) {
+      await showGameScreen(data.user);
+    } else {
       logout();
     }
   } catch {
@@ -604,31 +670,26 @@ async function handleToken(token) {
   }
 }
 
-// Check token in URL (after OAuth redirect) or localStorage
 async function checkExistingAuth() {
-  // Check URL for token param (after OAuth callback redirect)
   const params = new URLSearchParams(window.location.search);
   const urlToken = params.get('token');
   if (urlToken) {
-    // Clean URL
     window.history.replaceState({}, '', window.location.pathname);
     setAuthLoading(true);
     await handleToken(urlToken);
     return;
   }
-  // Check localStorage
   const stored = localStorage.getItem('regizs_token');
   if (stored) {
     setAuthLoading(true);
     await handleToken(stored);
     return;
   }
-  // No token — show auth screen normally
   showAuthScreen();
   initOneTap();
 }
 
-// ── One-Tap login ─────────────────────────────────────────────────────────
+// ── One-Tap ───────────────────────────────────────────────────────────────
 function initOneTap() {
   if (!window.google) return;
   google.accounts.id.initialize({
@@ -637,18 +698,10 @@ function initOneTap() {
     auto_select: true,
     cancel_on_tap_outside: false,
   });
-  // Render button in container
   google.accounts.id.renderButton(
     document.getElementById('one-tap-container'),
-    {
-      theme: 'filled_black',
-      size: 'large',
-      width: 320,
-      text: 'continue_with',
-      shape: 'rectangular',
-    }
+    { theme: 'filled_black', size: 'large', width: 320, text: 'continue_with', shape: 'rectangular' }
   );
-  // Also show the floating prompt
   google.accounts.id.prompt();
 }
 
@@ -673,12 +726,10 @@ async function onOneTapResponse(response) {
   }
 }
 
-// ── Manual Google OAuth ───────────────────────────────────────────────────
 document.getElementById('manual-google-btn').addEventListener('click', () => {
   window.location.href = `${AUTH_WORKER_URL}/auth/google`;
 });
 
-// ── Logout ────────────────────────────────────────────────────────────────
 function logout() {
   authToken = null;
   currentUser = null;
@@ -687,6 +738,29 @@ function logout() {
   showAuthScreen();
   setAuthLoading(false);
   initOneTap();
+}
+
+// ── Save result to game worker ────────────────────────────────────────────
+async function saveGameResult(result) {
+  if (!authToken) return;
+  try {
+    const res = await fetch(`${GAME_WORKER_URL}/game/result`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ result, level: currentLevel })
+    });
+    const data = await res.json();
+    if (data.newElo) {
+      document.getElementById('user-elo').textContent = `ELO ${data.newElo}`;
+    }
+    if (data.newlyUnlocked) {
+      unlockedUpTo = data.unlockedUpTo;
+      beaten = data.beaten;
+    }
+  } catch {}
 }
 
 // ── Chess Engine ──────────────────────────────────────────────────────────
@@ -741,13 +815,9 @@ function minimax(b,depth,alpha,beta,maximizing,ep,cr){const col=maximizing?'b':'
 function getBestMove(b,ep,cr,level){const cfg=LEVELS[level-1];const moves=legalMoves(b,'b',ep,cr);if(!moves.length)return null;if(Math.random()<cfg.randErr)return moves[Math.floor(Math.random()*moves.length)];let best=-Infinity,bestMove=null;for(const m of moves){const{board:nb,ep:nep,cr:ncr}=applyMove(b,m,ep,cr);const score=minimax(nb,cfg.depth-1,-Infinity,Infinity,false,nep,ncr);const noise=cfg.randErr*(Math.random()-0.5)*100;if(score+noise>best){best=score+noise;bestMove=m;}}return bestMove;}
 function cloneState(){return{board:board.map(r=>[...r]),turn,enPassant:enPassant?{...enPassant}:null,castlingRights:{...castlingRights},halfMoveClock};}
 function restoreState(s){board=s.board.map(r=>[...r]);turn=s.turn;enPassant=s.enPassant?{...s.enPassant}:null;castlingRights={...s.castlingRights};halfMoveClock=s.halfMoveClock;}
-
 function initBoard(){board=Array(8).fill(null).map(()=>Array(8).fill(null));const back=['R','N','B','Q','K','B','N','R'];for(let f=0;f<8;f++){board[0][f]='b'+back[f];board[1][f]='bP';board[6][f]='wP';board[7][f]='w'+back[f];}turn='w';selected=null;lastMove=null;enPassant=null;castlingRights={wK:true,wQ:true,bK:true,bQ:true};halfMoveClock=0;gameOver=false;thinking=false;moveHistory=[];boardHistory=[];moveLog=[];pendingPromo=null;}
-
 function renderBoard(){const el=document.getElementById('board');el.innerHTML='';const legal=selected?legalMoves(board,turn,enPassant,castlingRights).filter(m=>m.fr===selected[0]&&m.ff===selected[1]):[];const legalSet=new Set(legal.map(m=>m.tr*8+m.tf));const opp=turn==='w'?'b':'w';const kpos=findKing(board,turn);const inCheck=kpos&&isAttacked(board,kpos[0],kpos[1],opp);for(let r=0;r<8;r++)for(let f=0;f<8;f++){const sq=document.createElement('div');sq.className='square '+((r+f)%2===0?'light':'dark');if(selected&&selected[0]===r&&selected[1]===f)sq.classList.add('selected');if(lastMove&&((lastMove.fr===r&&lastMove.ff===f)||(lastMove.tr===r&&lastMove.tf===f)))sq.classList.add('last-move');if(inCheck&&kpos[0]===r&&kpos[1]===f)sq.classList.add('in-check');if(hintsOn&&legalSet.has(r*8+f)){const dot=document.createElement('div');dot.className='hint-dot'+(board[r][f]?' capture':'');sq.appendChild(dot);}const p=board[r][f];if(p){const pe=document.createElement('div');pe.className='piece';pe.innerHTML=getPieceSVG(p);sq.appendChild(pe);}sq.addEventListener('click',()=>onSquareClick(r,f));el.appendChild(sq);}}
-
 function buildCoords(){const ranks=document.getElementById('rank-labels');ranks.innerHTML='';for(let r=0;r<8;r++){const d=document.createElement('div');d.className='rank-label';d.textContent=8-r;ranks.appendChild(d);}const files=document.getElementById('file-labels-row');files.innerHTML='';'abcdefgh'.split('').forEach(c=>{const d=document.createElement('div');d.className='file-label';d.textContent=c;files.appendChild(d);});}
-
 function onSquareClick(r,f){if(gameOver||thinking||turn!=='w')return;const p=board[r][f];if(selected){const legal=legalMoves(board,'w',enPassant,castlingRights).filter(m=>m.fr===selected[0]&&m.ff===selected[1]);const matching=legal.filter(m=>m.tr===r&&m.tf===f);if(matching.length){if(matching.some(m=>m.promo)){pendingPromo={moves:matching,r,f};showPromoModal('w');return;}executeMove(matching[0]);return;}selected=null;}if(p&&color(p)==='w')selected=[r,f];renderBoard();}
 function showPromoModal(col){const c=document.getElementById('promo-pieces');c.innerHTML='';['Q','R','B','N'].forEach(t=>{const d=document.createElement('div');d.className='promo-piece';d.innerHTML=getPieceSVG(col+t);d.onclick=()=>promote(t);c.appendChild(d);});document.getElementById('promo-modal').classList.add('show');}
 function promote(pp){document.getElementById('promo-modal').classList.remove('show');if(!pendingPromo)return;const m=pendingPromo.moves.find(mv=>mv.promo===pp.toUpperCase());if(m)executeMove(m);pendingPromo=null;}
@@ -758,7 +828,27 @@ function doComputerMove(){thinking=true;updateStatusThinking();setTimeout(()=>{c
 function handleWin(){const lvlIdx=currentLevel-1;beaten[lvlIdx]=true;let newlyUnlocked=false;if(currentLevel===unlockedUpTo&&currentLevel<10){unlockedUpTo=currentLevel+1;newlyUnlocked=true;}renderLevels();return newlyUnlocked;}
 function updateStatus(status){const ind=document.getElementById('status-indicator');const txt=document.getElementById('status-text');if(status==='checkmate'){gameOver=true;if(turn==='w'){oppScore++;document.getElementById('opp-score').textContent=oppScore;showGameOver('DEFEAT','Computer wins by checkmate',false);}else{playerScore++;document.getElementById('player-score').textContent=playerScore;const unlocked=handleWin();showGameOver('VICTORY!','You win by checkmate!',unlocked);}}else if(status==='stalemate'||status==='draw-50'){gameOver=true;showGameOver('DRAW',status==='stalemate'?'Stalemate':'50-move rule',false);}else{const opp2=turn==='w'?'b':'w';const kp=findKing(board,turn);const check=kp&&isAttacked(board,kp[0],kp[1],opp2);if(turn==='w'){ind.className='status-indicator white';txt.innerHTML=check?'<strong>Check!</strong> — defend your king':'<strong>Your turn</strong> — select a piece';}else{ind.className='status-indicator black';txt.innerHTML='<strong>Computer</strong> is thinking…';}}}
 function updateStatusThinking(){document.getElementById('status-indicator').className='status-indicator thinking';document.getElementById('status-text').innerHTML='<strong>Computer</strong> is calculating…';}
-function showGameOver(title,sub,unlocked){document.getElementById('game-over-title').textContent=title;document.getElementById('game-over-sub').textContent=sub;const um=document.getElementById('unlock-msg');if(unlocked&&currentLevel<10){um.textContent=`🔓 Level ${currentLevel+1} · ${LEVELS[currentLevel].label} unlocked!`;}else if(title==='VICTORY!'&&currentLevel===10){um.textContent='🏆 Maximum level mastered!';}else{um.textContent='';}document.getElementById('game-over-banner').classList.add('show');}
+
+async function showGameOver(title, sub, unlocked) {
+  // Save result to game worker
+  const result = title === 'VICTORY!' ? 'win' : title === 'DRAW' ? 'draw' : 'loss';
+  await saveGameResult(result);
+  // Update level display after save
+  renderLevels();
+  // Show banner
+  document.getElementById('game-over-title').textContent = title;
+  document.getElementById('game-over-sub').textContent = sub;
+  const um = document.getElementById('unlock-msg');
+  if (unlocked && currentLevel < 10) {
+    um.textContent = `🔓 Level ${currentLevel+1} · ${LEVELS[currentLevel].label} unlocked!`;
+  } else if (title === 'VICTORY!' && currentLevel === 10) {
+    um.textContent = '🏆 Maximum level mastered!';
+  } else {
+    um.textContent = '';
+  }
+  document.getElementById('game-over-banner').classList.add('show');
+}
+
 function updateCaptured(){const wP={},bP={};for(let r=0;r<8;r++)for(let f=0;f<8;f++){const p=board[r][f];if(!p)continue;if(p[0]==='w')wP[p]=(wP[p]||0)+1;else bP[p]=(bP[p]||0)+1;}const start={P:8,N:2,B:2,R:2,Q:1,K:1};let wCap='',bCap='';['Q','R','B','N','P'].forEach(t=>{for(let i=0;i<((start[t]||0)-(wP['w'+t]||0));i++)bCap+=PIECES['w'+t];for(let i=0;i<((start[t]||0)-(bP['b'+t]||0));i++)wCap+=PIECES['b'+t];});document.getElementById('opp-captured').textContent=wCap||'';document.getElementById('player-captured').textContent=bCap||'';}
 function renderMoveLog(){const el=document.getElementById('move-log');el.innerHTML='';moveLog.forEach((entry,i)=>{const d=document.createElement('span');d.className='move-entry';d.innerHTML=`<span class="move-num">${i+1}.</span><span class="move-w">${entry.w}</span> <span class="move-b">${entry.b}</span> `;el.appendChild(d);});el.scrollLeft=el.scrollWidth;}
 function toggleHints(){hintsOn=!hintsOn;document.getElementById('hint-toggle-sw').className='toggle-switch'+(hintsOn?' on':'');renderBoard();}
