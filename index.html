@@ -428,7 +428,7 @@
       <div class="auth-divider">or</div>
 
       <!-- Manual Google OAuth button -->
-      <button class="google-btn" id="manual-google-btn" onclick="window.location.href='https://regis-auth.kerosoftz522.workers.dev/auth/google'">
+      <button class="google-btn" id="manual-google-btn" onclick="manualGoogleLogin()">
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
           <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -551,126 +551,27 @@
 </div>
 
 <script>
-// ── Config (injected by GitHub Actions at build time) ─────────────────────
-const AUTH_WORKER_URL = 'https://regis-auth.kerosoftz522.workers.dev';
-const GOOGLE_CLIENT_ID = '103731782063-pe7mp4473vdd4jehtjbpq2lmd8qs0u19.apps.googleusercontent.com';
+// ── Single hardcoded value — the config endpoint ──────────────────────────
+const CONFIG_URL = 'https://regis-auth.kerosoftz522.workers.dev/config';
 
-// ── Auth Logic ────────────────────────────────────────────────────────────
+// ── Runtime config (populated from /config on load) ───────────────────────
+let CFG = { authUrl: '', gameUrl: '', googleClientId: '' };
+
+// ── Auth state ────────────────────────────────────────────────────────────
 let currentUser = null;
 let authToken = null;
 
-function showAuthScreen() {
-  document.getElementById('auth-screen').classList.remove('hidden');
-  document.getElementById('game-screen').style.display = 'none';
-}
-
-function showGameScreen(user) {
-  document.getElementById('auth-screen').classList.add('hidden');
-  document.getElementById('game-screen').style.display = 'flex';
-  // Populate user info
-  currentUser = user;
-  document.getElementById('user-name').textContent = user.name || user.email;
-  document.getElementById('user-elo').textContent = `ELO ${user.elo || 1000}`;
-  document.getElementById('player-display-name').textContent = (user.name || 'YOU').split(' ')[0].toUpperCase();
-  if (user.avatar) {
-    document.getElementById('user-avatar').src = user.avatar;
-    const wrap = document.getElementById('player-avatar-wrap');
-    wrap.innerHTML = `<img src="${user.avatar}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.parentElement.textContent='👤'"/>`;
-  }
-}
-
-function setAuthLoading(on) {
-  document.getElementById('auth-loading').className = 'auth-loading' + (on ? ' show' : '');
-  document.getElementById('auth-buttons').style.display = on ? 'none' : 'flex';
-}
-
-async function handleToken(token) {
-  authToken = token;
-  localStorage.setItem('regizs_token', token);
-  // Fetch full profile from worker
+// ── Load config then boot ─────────────────────────────────────────────────
+async function boot() {
   try {
-    const res = await fetch(`${AUTH_WORKER_URL}/auth/profile`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const data = await res.json();
-    if (data.user) {
-      showGameScreen(data.user);
-      initChessGame();
-    } else {
-<script>
-// ── Config ────────────────────────────────────────────────────────────────
-const AUTH_WORKER_URL = 'https://regis-auth.kerosoftz522.workers.dev';
-const GAME_WORKER_URL = 'https://regis-game.kerosoftz522.workers.dev';
-const GOOGLE_CLIENT_ID = '103731782063-pe7mp4473vdd4jehtjbpq2lmd8qs0u19.apps.googleusercontent.com';
-
-// ── Auth State ────────────────────────────────────────────────────────────
-let currentUser = null;
-let authToken = null;
-
-function showAuthScreen() {
-  document.getElementById('auth-screen').classList.remove('hidden');
-  document.getElementById('game-screen').style.display = 'none';
-}
-
-async function showGameScreen(user) {
-  document.getElementById('auth-screen').classList.add('hidden');
-  document.getElementById('game-screen').style.display = 'flex';
-  currentUser = user;
-  // Load full game profile from game worker
-  try {
-    const res = await fetch(`${GAME_WORKER_URL}/game/profile`, {
-      headers: { 'Authorization': `Bearer ${authToken}` }
-    });
-    const data = await res.json();
-    if (data.profile) {
-      const p = data.profile;
-      // Restore progress
-      unlockedUpTo = p.unlockedUpTo || 1;
-      beaten = p.beaten || Array(10).fill(false);
-      currentLevel = Math.min(p.currentLevel || 1, p.unlockedUpTo || 1);
-      // Update UI
-      document.getElementById('user-name').textContent = p.name || p.email;
-      document.getElementById('user-elo').textContent = `ELO ${p.elo || 1000}`;
-      document.getElementById('player-display-name').textContent = (p.name || 'YOU').split(' ')[0].toUpperCase();
-      if (p.avatar) {
-        document.getElementById('user-avatar').src = p.avatar;
-        const wrap = document.getElementById('player-avatar-wrap');
-        wrap.innerHTML = `<img src="${p.avatar}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.parentElement.textContent='👤'"/>`;
-      }
-    }
-  } catch(e) {
-    // Fallback to basic user info from JWT
-    document.getElementById('user-name').textContent = user.name || user.email;
-    document.getElementById('user-elo').textContent = `ELO 1000`;
-    document.getElementById('player-display-name').textContent = (user.name || 'YOU').split(' ')[0].toUpperCase();
-  }
-  initChessGame();
-}
-
-function setAuthLoading(on) {
-  document.getElementById('auth-loading').className = 'auth-loading' + (on ? ' show' : '');
-  document.getElementById('auth-buttons').style.display = on ? 'none' : 'flex';
-}
-
-async function handleToken(token) {
-  authToken = token;
-  localStorage.setItem('regizs_token', token);
-  try {
-    const res = await fetch(`${AUTH_WORKER_URL}/auth/profile`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const data = await res.json();
-    if (data.user) {
-      await showGameScreen(data.user);
-    } else {
-      logout();
-    }
+    const res = await fetch(CONFIG_URL);
+    CFG = await res.json();
   } catch {
-    logout();
+    // Fallback — should not happen in production
+    console.error('Failed to load config');
+    return;
   }
-}
-
-async function checkExistingAuth() {
+  // Check for token in URL or localStorage
   const params = new URLSearchParams(window.location.search);
   const urlToken = params.get('token');
   if (urlToken) {
@@ -689,11 +590,72 @@ async function checkExistingAuth() {
   initOneTap();
 }
 
+// ── Auth UI ───────────────────────────────────────────────────────────────
+function showAuthScreen() {
+  document.getElementById('auth-screen').classList.remove('hidden');
+  document.getElementById('game-screen').style.display = 'none';
+}
+
+function setAuthLoading(on) {
+  document.getElementById('auth-loading').className = 'auth-loading' + (on ? ' show' : '');
+  document.getElementById('auth-buttons').style.display = on ? 'none' : 'flex';
+}
+
+async function handleToken(token) {
+  authToken = token;
+  localStorage.setItem('regizs_token', token);
+  try {
+    const res = await fetch(`${CFG.authUrl}/auth/profile`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (data.user) {
+      await showGameScreen(data.user);
+    } else {
+      logout();
+    }
+  } catch {
+    logout();
+  }
+}
+
+async function showGameScreen(user) {
+  document.getElementById('auth-screen').classList.add('hidden');
+  document.getElementById('game-screen').style.display = 'flex';
+  currentUser = user;
+  // Load game profile
+  try {
+    const res = await fetch(`${CFG.gameUrl}/game/profile`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    const data = await res.json();
+    if (data.profile) {
+      const p = data.profile;
+      unlockedUpTo = p.unlockedUpTo || 1;
+      beaten = p.beaten || Array(10).fill(false);
+      currentLevel = Math.min(p.currentLevel || 1, p.unlockedUpTo || 1);
+      document.getElementById('user-name').textContent = p.name || p.email;
+      document.getElementById('user-elo').textContent = `ELO ${p.elo || 1000}`;
+      document.getElementById('player-display-name').textContent = (p.name || 'YOU').split(' ')[0].toUpperCase();
+      if (p.avatar) {
+        document.getElementById('user-avatar').src = p.avatar;
+        const wrap = document.getElementById('player-avatar-wrap');
+        wrap.innerHTML = `<img src="${p.avatar}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.parentElement.textContent='👤'"/>`;
+      }
+    }
+  } catch {
+    document.getElementById('user-name').textContent = user.name || user.email;
+    document.getElementById('user-elo').textContent = 'ELO 1000';
+    document.getElementById('player-display-name').textContent = (user.name || 'YOU').split(' ')[0].toUpperCase();
+  }
+  initChessGame();
+}
+
 // ── One-Tap ───────────────────────────────────────────────────────────────
 function initOneTap() {
-  if (!window.google) return;
+  if (!window.google || !CFG.googleClientId) return;
   google.accounts.id.initialize({
-    client_id: GOOGLE_CLIENT_ID,
+    client_id: CFG.googleClientId,
     callback: onOneTapResponse,
     auto_select: true,
     cancel_on_tap_outside: false,
@@ -708,7 +670,7 @@ function initOneTap() {
 async function onOneTapResponse(response) {
   setAuthLoading(true);
   try {
-    const res = await fetch(`${AUTH_WORKER_URL}/auth/onetap`, {
+    const res = await fetch(`${CFG.authUrl}/auth/onetap`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ credential: response.credential }),
@@ -726,8 +688,12 @@ async function onOneTapResponse(response) {
   }
 }
 
-// manual-google-btn handled via inline onclick
+// ── Manual Google login ───────────────────────────────────────────────────
+function manualGoogleLogin() {
+  window.location.href = `${CFG.authUrl}/auth/google`;
+}
 
+// ── Logout ────────────────────────────────────────────────────────────────
 function logout() {
   authToken = null;
   currentUser = null;
@@ -738,26 +704,18 @@ function logout() {
   initOneTap();
 }
 
-// ── Save result to game worker ────────────────────────────────────────────
+// ── Save game result ──────────────────────────────────────────────────────
 async function saveGameResult(result) {
   if (!authToken) return;
   try {
-    const res = await fetch(`${GAME_WORKER_URL}/game/result`, {
+    const res = await fetch(`${CFG.gameUrl}/game/result`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${authToken}`,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ result, level: currentLevel })
     });
     const data = await res.json();
-    if (data.newElo) {
-      document.getElementById('user-elo').textContent = `ELO ${data.newElo}`;
-    }
-    if (data.newlyUnlocked) {
-      unlockedUpTo = data.unlockedUpTo;
-      beaten = data.beaten;
-    }
+    if (data.newElo) document.getElementById('user-elo').textContent = `ELO ${data.newElo}`;
+    if (data.newlyUnlocked) { unlockedUpTo = data.unlockedUpTo; beaten = data.beaten; }
   } catch {}
 }
 
@@ -781,16 +739,9 @@ function getPieceSVG(piece) {
   }
 }
 
-const PIECES = { wK:'♔',wQ:'♕',wR:'♖',wB:'♗',wN:'♘',wP:'♙',bK:'♚',bQ:'♛',bR:'♜',bB:'♝',bN:'♞',bP:'♟' };
-const PIECE_VALUES = { K:0,Q:9,R:5,B:3.25,N:3,P:1 };
-const PST = {
-  P:[[0,0,0,0,0,0,0,0],[50,50,50,50,50,50,50,50],[10,10,20,30,30,20,10,10],[5,5,10,25,25,10,5,5],[0,0,0,20,20,0,0,0],[5,-5,-10,0,0,-10,-5,5],[5,10,10,-20,-20,10,10,5],[0,0,0,0,0,0,0,0]],
-  N:[[-50,-40,-30,-30,-30,-30,-40,-50],[-40,-20,0,0,0,0,-20,-40],[-30,0,10,15,15,10,0,-30],[-30,5,15,20,20,15,5,-30],[-30,0,15,20,20,15,0,-30],[-30,5,10,15,15,10,5,-30],[-40,-20,0,5,5,0,-20,-40],[-50,-40,-30,-30,-30,-30,-40,-50]],
-  B:[[-20,-10,-10,-10,-10,-10,-10,-20],[-10,0,0,0,0,0,0,-10],[-10,0,5,10,10,5,0,-10],[-10,5,5,10,10,5,5,-10],[-10,0,10,10,10,10,0,-10],[-10,10,10,10,10,10,10,-10],[-10,5,0,0,0,0,5,-10],[-20,-10,-10,-10,-10,-10,-10,-20]],
-  R:[[0,0,0,0,0,0,0,0],[5,10,10,10,10,10,10,5],[-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],[0,0,0,5,5,0,0,0]],
-  Q:[[-20,-10,-10,-5,-5,-10,-10,-20],[-10,0,0,0,0,0,0,-10],[-10,0,5,5,5,5,0,-10],[-5,0,5,5,5,5,0,-5],[0,0,5,5,5,5,0,-5],[-10,5,5,5,5,5,0,-10],[-10,0,5,0,0,0,0,-10],[-20,-10,-10,-5,-5,-10,-10,-20]],
-  K:[[-30,-40,-40,-50,-50,-40,-40,-30],[-30,-40,-40,-50,-50,-40,-40,-30],[-30,-40,-40,-50,-50,-40,-40,-30],[-30,-40,-40,-50,-50,-40,-40,-30],[-20,-30,-30,-40,-40,-30,-30,-20],[-10,-20,-20,-20,-20,-20,-20,-10],[20,20,0,0,0,0,20,20],[20,30,10,0,0,10,30,20]]
-};
+const PIECES={wK:'♔',wQ:'♕',wR:'♖',wB:'♗',wN:'♘',wP:'♙',bK:'♚',bQ:'♛',bR:'♜',bB:'♝',bN:'♞',bP:'♟'};
+const PIECE_VALUES={K:0,Q:9,R:5,B:3.25,N:3,P:1};
+const PST={P:[[0,0,0,0,0,0,0,0],[50,50,50,50,50,50,50,50],[10,10,20,30,30,20,10,10],[5,5,10,25,25,10,5,5],[0,0,0,20,20,0,0,0],[5,-5,-10,0,0,-10,-5,5],[5,10,10,-20,-20,10,10,5],[0,0,0,0,0,0,0,0]],N:[[-50,-40,-30,-30,-30,-30,-40,-50],[-40,-20,0,0,0,0,-20,-40],[-30,0,10,15,15,10,0,-30],[-30,5,15,20,20,15,5,-30],[-30,0,15,20,20,15,0,-30],[-30,5,10,15,15,10,5,-30],[-40,-20,0,5,5,0,-20,-40],[-50,-40,-30,-30,-30,-30,-40,-50]],B:[[-20,-10,-10,-10,-10,-10,-10,-20],[-10,0,0,0,0,0,0,-10],[-10,0,5,10,10,5,0,-10],[-10,5,5,10,10,5,5,-10],[-10,0,10,10,10,10,0,-10],[-10,10,10,10,10,10,10,-10],[-10,5,0,0,0,0,5,-10],[-20,-10,-10,-10,-10,-10,-10,-20]],R:[[0,0,0,0,0,0,0,0],[5,10,10,10,10,10,10,5],[-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],[0,0,0,5,5,0,0,0]],Q:[[-20,-10,-10,-5,-5,-10,-10,-20],[-10,0,0,0,0,0,0,-10],[-10,0,5,5,5,5,0,-10],[-5,0,5,5,5,5,0,-5],[0,0,5,5,5,5,0,-5],[-10,5,5,5,5,5,0,-10],[-10,0,5,0,0,0,0,-10],[-20,-10,-10,-5,-5,-10,-10,-20]],K:[[-30,-40,-40,-50,-50,-40,-40,-30],[-30,-40,-40,-50,-50,-40,-40,-30],[-30,-40,-40,-50,-50,-40,-40,-30],[-30,-40,-40,-50,-50,-40,-40,-30],[-20,-30,-30,-40,-40,-30,-30,-20],[-10,-20,-20,-20,-20,-20,-20,-10],[20,20,0,0,0,0,20,20],[20,30,10,0,0,10,30,20]]};
 const LEVELS=[{label:'Novice',depth:1,randErr:0.9},{label:'Beginner',depth:1,randErr:0.6},{label:'Casual',depth:2,randErr:0.35},{label:'Amateur',depth:2,randErr:0.15},{label:'Club',depth:3,randErr:0.05},{label:'Advanced',depth:3,randErr:0.01},{label:'Expert',depth:4,randErr:0},{label:'Master',depth:4,randErr:0},{label:'GM',depth:5,randErr:0},{label:'Magnus',depth:5,randErr:0}];
 
 let board=[],turn='w',selected=null,hintsOn=true;
@@ -826,27 +777,7 @@ function doComputerMove(){thinking=true;updateStatusThinking();setTimeout(()=>{c
 function handleWin(){const lvlIdx=currentLevel-1;beaten[lvlIdx]=true;let newlyUnlocked=false;if(currentLevel===unlockedUpTo&&currentLevel<10){unlockedUpTo=currentLevel+1;newlyUnlocked=true;}renderLevels();return newlyUnlocked;}
 function updateStatus(status){const ind=document.getElementById('status-indicator');const txt=document.getElementById('status-text');if(status==='checkmate'){gameOver=true;if(turn==='w'){oppScore++;document.getElementById('opp-score').textContent=oppScore;showGameOver('DEFEAT','Computer wins by checkmate',false);}else{playerScore++;document.getElementById('player-score').textContent=playerScore;const unlocked=handleWin();showGameOver('VICTORY!','You win by checkmate!',unlocked);}}else if(status==='stalemate'||status==='draw-50'){gameOver=true;showGameOver('DRAW',status==='stalemate'?'Stalemate':'50-move rule',false);}else{const opp2=turn==='w'?'b':'w';const kp=findKing(board,turn);const check=kp&&isAttacked(board,kp[0],kp[1],opp2);if(turn==='w'){ind.className='status-indicator white';txt.innerHTML=check?'<strong>Check!</strong> — defend your king':'<strong>Your turn</strong> — select a piece';}else{ind.className='status-indicator black';txt.innerHTML='<strong>Computer</strong> is thinking…';}}}
 function updateStatusThinking(){document.getElementById('status-indicator').className='status-indicator thinking';document.getElementById('status-text').innerHTML='<strong>Computer</strong> is calculating…';}
-
-async function showGameOver(title, sub, unlocked) {
-  // Save result to game worker
-  const result = title === 'VICTORY!' ? 'win' : title === 'DRAW' ? 'draw' : 'loss';
-  await saveGameResult(result);
-  // Update level display after save
-  renderLevels();
-  // Show banner
-  document.getElementById('game-over-title').textContent = title;
-  document.getElementById('game-over-sub').textContent = sub;
-  const um = document.getElementById('unlock-msg');
-  if (unlocked && currentLevel < 10) {
-    um.textContent = `🔓 Level ${currentLevel+1} · ${LEVELS[currentLevel].label} unlocked!`;
-  } else if (title === 'VICTORY!' && currentLevel === 10) {
-    um.textContent = '🏆 Maximum level mastered!';
-  } else {
-    um.textContent = '';
-  }
-  document.getElementById('game-over-banner').classList.add('show');
-}
-
+async function showGameOver(title,sub,unlocked){const result=title==='VICTORY!'?'win':title==='DRAW'?'draw':'loss';await saveGameResult(result);renderLevels();document.getElementById('game-over-title').textContent=title;document.getElementById('game-over-sub').textContent=sub;const um=document.getElementById('unlock-msg');if(unlocked&&currentLevel<10){um.textContent=`🔓 Level ${currentLevel+1} · ${LEVELS[currentLevel].label} unlocked!`;}else if(title==='VICTORY!'&&currentLevel===10){um.textContent='🏆 Maximum level mastered!';}else{um.textContent='';}document.getElementById('game-over-banner').classList.add('show');}
 function updateCaptured(){const wP={},bP={};for(let r=0;r<8;r++)for(let f=0;f<8;f++){const p=board[r][f];if(!p)continue;if(p[0]==='w')wP[p]=(wP[p]||0)+1;else bP[p]=(bP[p]||0)+1;}const start={P:8,N:2,B:2,R:2,Q:1,K:1};let wCap='',bCap='';['Q','R','B','N','P'].forEach(t=>{for(let i=0;i<((start[t]||0)-(wP['w'+t]||0));i++)bCap+=PIECES['w'+t];for(let i=0;i<((start[t]||0)-(bP['b'+t]||0));i++)wCap+=PIECES['b'+t];});document.getElementById('opp-captured').textContent=wCap||'';document.getElementById('player-captured').textContent=bCap||'';}
 function renderMoveLog(){const el=document.getElementById('move-log');el.innerHTML='';moveLog.forEach((entry,i)=>{const d=document.createElement('span');d.className='move-entry';d.innerHTML=`<span class="move-num">${i+1}.</span><span class="move-w">${entry.w}</span> <span class="move-b">${entry.b}</span> `;el.appendChild(d);});el.scrollLeft=el.scrollWidth;}
 function toggleHints(){hintsOn=!hintsOn;document.getElementById('hint-toggle-sw').className='toggle-switch'+(hintsOn?' on':'');renderBoard();}
@@ -854,17 +785,10 @@ function undoMove(){if(boardHistory.length<2)return;restoreState(boardHistory.po
 function resign(){if(gameOver)return;gameOver=true;oppScore++;document.getElementById('opp-score').textContent=oppScore;showGameOver('RESIGNED','Better luck next time.',false);}
 function newGame(){document.getElementById('game-over-banner').classList.remove('show');initBoard();renderBoard();updateStatus('playing');updateCaptured();renderMoveLog();}
 function renderLevels(){const grid=document.getElementById('level-grid');grid.innerHTML='';const progressLabel=document.getElementById('level-progress-label');progressLabel.textContent=`Level ${currentLevel} of 10`;const hint=document.getElementById('unlock-hint');if(currentLevel<10&&!beaten[currentLevel-1]){hint.innerHTML=`Win at <span>Level ${currentLevel} · ${LEVELS[currentLevel-1].label}</span> to unlock the next level`;}else if(currentLevel===10){hint.innerHTML=`Playing at <span>Magnus</span> — the highest level`;}else{hint.innerHTML='';}LEVELS.forEach((l,i)=>{const lvl=i+1;const btn=document.createElement('div');const isActive=lvl===currentLevel;const isBeaten=beaten[i];const isUnlocked=lvl<=unlockedUpTo;let cls='level-btn';if(isActive)cls+=' active';else if(isBeaten)cls+=' beaten';else if(isUnlocked)cls+=' unlocked';else cls+=' locked';btn.className=cls;btn.innerHTML=`<span class="level-num">${lvl}</span><span class="level-name">${l.label}</span>`;if(!isUnlocked){const lock=document.createElement('span');lock.className='lock-icon';lock.textContent='🔒';btn.appendChild(lock);}else if(isBeaten&&!isActive){const chk=document.createElement('span');chk.className='check-icon';chk.textContent='✓';btn.appendChild(chk);}if(isUnlocked){btn.addEventListener('click',()=>{if(lvl===currentLevel)return;currentLevel=lvl;document.getElementById('opp-level-label').textContent=`Level ${lvl} · ${l.label}`;renderLevels();newGame();});}grid.appendChild(btn);});}
+function initChessGame(){buildCoords();renderLevels();initBoard();renderBoard();updateStatus('playing');}
 
-function initChessGame() {
-  buildCoords();
-  renderLevels();
-  initBoard();
-  renderBoard();
-  updateStatus('playing');
-}
-
-// ── Start ─────────────────────────────────────────────────────────────────
-checkExistingAuth();
+// ── Boot ──────────────────────────────────────────────────────────────────
+boot();
 </script>
 </body>
 </html>
