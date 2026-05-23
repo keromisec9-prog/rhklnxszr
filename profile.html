@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Regizs · Profile</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #07070d; --surface: #0f0f1a; --surface2: #161625;
+  --border: #1e1e32; --gold: #c8a84b; --gold-dim: #6a5520;
+  --ivory: #f0ead6; --text: #c8bfa0; --text-dim: #5a5240;
+  --green: #3a8a3a; --red: #8a2020; --error: #c06060;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'Crimson Pro', serif;
+  min-height: 100vh; overflow-x: hidden;
+}
+body::before {
+  content: ''; position: fixed; inset: 0;
+  background: radial-gradient(ellipse 80% 40% at 50% -10%, #1a0f2e 0%, transparent 60%);
+  pointer-events: none; z-index: 0;
+}
+.page { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 0 0 80px; }
+
+/* Header */
+.prof-header {
+  padding: 20px 16px 0; text-align: center; position: relative;
+}
+.back-btn {
+  position: absolute; left: 16px; top: 22px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 10px;
+  color: var(--text-dim); font-size: 0.7rem;
+  font-family: 'Cinzel', serif; letter-spacing: 0.05em;
+  cursor: pointer; text-decoration: none;
+  transition: color 0.2s, border-color 0.2s;
+}
+.back-btn:hover { color: var(--gold); border-color: var(--gold-dim); }
+.prof-title {
+  font-family: 'Cinzel', serif; font-weight: 900;
+  font-size: 1.4rem; letter-spacing: 0.1em; color: var(--gold);
+}
+.prof-subtitle {
+  font-size: 0.7rem; color: var(--text-dim);
+  letter-spacing: 0.12em; text-transform: uppercase; margin-top: 2px;
+}
+
+/* Avatar card */
+.avatar-card {
+  margin: 16px 16px 0;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 20px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.avatar-wrap {
+  width: 72px; height: 72px; border-radius: 50%;
+  border: 2px solid var(--gold-dim);
+  background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.8rem; overflow: hidden;
+}
+.avatar-wrap img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.avatar-name {
+  font-family: 'Cinzel', serif; font-size: 0.9rem;
+  color: var(--ivory); letter-spacing: 0.06em; text-align: center;
+}
+.avatar-email { font-size: 0.68rem; color: var(--text-dim); }
+.tier-display {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 16px; border: 1px solid currentColor;
+  font-family: 'Cinzel', serif; font-size: 0.65rem; letter-spacing: 0.1em;
+}
+
+/* Stats row */
+.stats-row {
+  margin: 10px 16px 0;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+}
+.stat-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 6px; text-align: center;
+}
+.stat-num {
+  font-family: 'Space Mono', monospace;
+  font-size: 1rem; color: var(--ivory);
+}
+.stat-label { font-size: 0.55rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+
+/* Form sections */
+.section {
+  margin: 14px 16px 0;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 16px;
+}
+.section-title {
+  font-family: 'Cinzel', serif; font-size: 0.65rem;
+  letter-spacing: 0.12em; color: var(--text-dim);
+  text-transform: uppercase; margin-bottom: 12px;
+}
+
+.field { margin-bottom: 12px; }
+.field:last-child { margin-bottom: 0; }
+.field label {
+  display: block; font-size: 0.68rem; color: var(--text-dim);
+  letter-spacing: 0.06em; margin-bottom: 5px;
+  font-family: 'Cinzel', serif; text-transform: uppercase;
+}
+.field input, .field select {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 12px; color: var(--ivory);
+  font-family: 'Crimson Pro', serif; font-size: 0.9rem;
+  outline: none; transition: border-color 0.2s;
+  -webkit-appearance: none; appearance: none;
+}
+.field input:focus, .field select:focus { border-color: var(--gold-dim); }
+.field input.error { border-color: var(--error); }
+.field input.ok { border-color: var(--green); }
+.field-hint {
+  font-size: 0.62rem; color: var(--text-dim);
+  margin-top: 4px; display: flex; align-items: center; gap: 4px;
+}
+.field-hint.error { color: var(--error); }
+.field-hint.ok { color: #5ab05a; }
+
+/* Country selector */
+.country-search {
+  position: relative;
+}
+.country-dropdown {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 50;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; max-height: 180px; overflow-y: auto;
+  display: none;
+}
+.country-dropdown.show { display: block; }
+.country-option {
+  padding: 8px 12px; cursor: pointer;
+  font-size: 0.85rem; display: flex; align-items: center; gap: 8px;
+  transition: background 0.15s;
+}
+.country-option:hover { background: var(--surface); }
+
+/* Save button */
+.save-btn {
+  width: 100%; margin-top: 12px;
+  background: linear-gradient(135deg, #2a2210, #1a1808);
+  border: 1px solid var(--gold-dim); border-radius: 10px;
+  color: var(--gold); font-family: 'Cinzel', serif;
+  font-size: 0.75rem; letter-spacing: 0.1em;
+  padding: 12px; cursor: pointer;
+  transition: border-color 0.2s, opacity 0.2s;
+}
+.save-btn:hover { border-color: var(--gold); }
+.save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px; padding: 8px 18px;
+  font-family: 'Cinzel', serif; font-size: 0.7rem;
+  letter-spacing: 0.06em; color: var(--text);
+  opacity: 0; transition: opacity 0.3s; pointer-events: none;
+  z-index: 200; white-space: nowrap;
+}
+.toast.show { opacity: 1; }
+.toast.success { border-color: #3a6a3a; color: #5ab05a; }
+.toast.error { border-color: #5a2020; color: #c06060; }
+
+/* Danger zone */
+.danger-section {
+  margin: 14px 16px 0;
+  background: var(--surface); border: 1px solid #2a1010;
+  border-radius: 14px; padding: 16px;
+}
+.danger-title {
+  font-family: 'Cinzel', serif; font-size: 0.65rem;
+  letter-spacing: 0.12em; color: #5a2020;
+  text-transform: uppercase; margin-bottom: 10px;
+}
+.logout-full-btn {
+  width: 100%; background: transparent;
+  border: 1px solid #3a1010; border-radius: 10px;
+  color: #c06060; font-family: 'Cinzel', serif;
+  font-size: 0.72rem; letter-spacing: 0.08em;
+  padding: 10px; cursor: pointer;
+  transition: background 0.2s;
+}
+.logout-full-btn:hover { background: #1a0808; }
+
+/* Bottom nav */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 480px;
+  background: var(--surface); border-top: 1px solid var(--border);
+  display: flex; align-items: center; padding: 8px 0 12px; z-index: 100;
+}
+.nav-item {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; gap: 3px; text-decoration: none; cursor: pointer;
+  color: var(--text-dim); font-family: 'Cinzel', serif;
+  font-size: 0.5rem; letter-spacing: 0.08em; text-transform: uppercase;
+  transition: color 0.2s;
+}
+.nav-item.active { color: var(--gold); }
+.nav-item:hover { color: var(--gold); }
+.nav-icon { font-size: 1.1rem; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="prof-header">
+    <a class="back-btn" href="index.html">← Play</a>
+    <div class="prof-title">PROFILE</div>
+    <div class="prof-subtitle">Settings & Stats</div>
+  </div>
+
+  <!-- Avatar card -->
+  <div class="avatar-card">
+    <div class="avatar-wrap" id="avatar-wrap">♟</div>
+    <div class="avatar-name" id="display-name">—</div>
+    <div class="avatar-email" id="display-email">—</div>
+    <div class="tier-display" id="tier-display" style="color:#5a5240;border-color:#5a5240">
+      ♟ Rookie
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="stat-num" id="stat-elo">—</div>
+      <div class="stat-label">ELO</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" id="stat-wins">—</div>
+      <div class="stat-label">Wins</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" id="stat-losses">—</div>
+      <div class="stat-label">Losses</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" id="stat-wr">—</div>
+      <div class="stat-label">Win %</div>
+    </div>
+  </div>
+
+  <!-- Username section -->
+  <div class="section">
+    <div class="section-title">🎮 Player Identity</div>
+    <div class="field">
+      <label>Username</label>
+      <input type="text" id="username-input" placeholder="e.g. BlitzKing"
+        maxlength="20" autocomplete="off" autocorrect="off" spellcheck="false"/>
+      <div class="field-hint" id="username-hint">3–20 characters, letters/numbers/underscores only</div>
+    </div>
+    <button class="save-btn" id="save-username-btn" onclick="saveUsername()">
+      Save Username
+    </button>
+  </div>
+
+  <!-- Country section -->
+  <div class="section">
+    <div class="section-title">🌍 Country</div>
+    <div class="field">
+      <label>Your Country</label>
+      <div class="country-search">
+        <input type="text" id="country-input" placeholder="Search country…"
+          autocomplete="off" autocorrect="off" spellcheck="false"
+          oninput="filterCountries(this.value)"
+          onfocus="showCountryDropdown()"
+          onblur="setTimeout(hideCountryDropdown, 200)"/>
+        <div class="country-dropdown" id="country-dropdown"></div>
+      </div>
+    </div>
+    <button class="save-btn" id="save-country-btn" onclick="saveCountry()">
+      Save Country
+    </button>
+  </div>
+
+  <!-- Danger zone -->
+  <div class="danger-section">
+    <div class="danger-title">⚠ Account</div>
+    <button class="logout-full-btn" onclick="logout()">Sign Out</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Bottom nav -->
+<nav class="bottom-nav">
+  <a class="nav-item" href="index.html">
+    <span class="nav-icon">♟</span><span>Play</span>
+  </a>
+  <a class="nav-item" href="leaderboard.html">
+    <span class="nav-icon">🏆</span><span>Rankings</span>
+  </a>
+  <div class="nav-item active">
+    <span class="nav-icon">👤</span><span>Profile</span>
+  </div>
+</nav>
+
+<script>
+const CONFIG_URL = 'https://regis-auth.kerosoftz522.workers.dev/config';
+let CFG = { authUrl:'', gameUrl:'', googleClientId:'' };
+let authToken = localStorage.getItem('regizs_token');
+let profile = null;
+let selectedCountryCode = null;
+let usernameTimer = null;
+
+// Countries list
+const COUNTRIES = [
+  {code:'UG',name:'Uganda'},
+  {code:'KE',name:'Kenya'},
+  {code:'TZ',name:'Tanzania'},
+  {code:'RW',name:'Rwanda'},
+  {code:'ET',name:'Ethiopia'},
+  {code:'NG',name:'Nigeria'},
+  {code:'GH',name:'Ghana'},
+  {code:'ZA',name:'South Africa'},
+  {code:'EG',name:'Egypt'},
+  {code:'MA',name:'Morocco'},
+  {code:'SN',name:'Senegal'},
+  {code:'CI',name:'Côte d\'Ivoire'},
+  {code:'CM',name:'Cameroon'},
+  {code:'US',name:'United States'},
+  {code:'GB',name:'United Kingdom'},
+  {code:'CA',name:'Canada'},
+  {code:'AU',name:'Australia'},
+  {code:'IN',name:'India'},
+  {code:'CN',name:'China'},
+  {code:'JP',name:'Japan'},
+  {code:'KR',name:'South Korea'},
+  {code:'BR',name:'Brazil'},
+  {code:'MX',name:'Mexico'},
+  {code:'DE',name:'Germany'},
+  {code:'FR',name:'France'},
+  {code:'IT',name:'Italy'},
+  {code:'ES',name:'Spain'},
+  {code:'PT',name:'Portugal'},
+  {code:'NL',name:'Netherlands'},
+  {code:'SE',name:'Sweden'},
+  {code:'NO',name:'Norway'},
+  {code:'FI',name:'Finland'},
+  {code:'PL',name:'Poland'},
+  {code:'RU',name:'Russia'},
+  {code:'BI',name:'Burundi'},
+  {code:'CD',name:'DR Congo'},
+  {code:'SS',name:'South Sudan'},
+  {code:'SO',name:'Somalia'},
+  {code:'MZ',name:'Mozambique'},
+  {code:'ZM',name:'Zambia'},
+  {code:'ZW',name:'Zimbabwe'},
+  {code:'MW',name:'Malawi'},
+  {code:'AO',name:'Angola'},
+  {code:'BW',name:'Botswana'},
+  {code:'NA',name:'Namibia'},
+  {code:'PH',name:'Philippines'},
+  {code:'ID',name:'Indonesia'},
+  {code:'MY',name:'Malaysia'},
+  {code:'SG',name:'Singapore'},
+  {code:'TH',name:'Thailand'},
+  {code:'VN',name:'Vietnam'},
+  {code:'PK',name:'Pakistan'},
+  {code:'BD',name:'Bangladesh'},
+  {code:'LK',name:'Sri Lanka'},
+  {code:'NP',name:'Nepal'},
+  {code:'AR',name:'Argentina'},
+  {code:'CO',name:'Colombia'},
+  {code:'PE',name:'Peru'},
+  {code:'CL',name:'Chile'},
+  {code:'VE',name:'Venezuela'},
+  {code:'TR',name:'Turkey'},
+  {code:'SA',name:'Saudi Arabia'},
+  {code:'AE',name:'UAE'},
+  {code:'IL',name:'Israel'},
+  {code:'IR',name:'Iran'},
+  {code:'IQ',name:'Iraq'},
+].sort((a,b) => a.name.localeCompare(b.name));
+
+function flag(code) {
+  if (!code || code.length !== 2) return '';
+  return String.fromCodePoint(
+    ...code.toUpperCase().split('').map(c => 0x1F1E6 + c.charCodeAt(0) - 65)
+  );
+}
+
+function tierColor(tier) {
+  const map = {
+    'Grandmaster':'#ff4d4d','Master':'#ff8c00','Diamond':'#b44dff',
+    'Platinum':'#00cfff','Gold':'#ffd700','Silver':'#c0c0c0',
+    'Bronze':'#cd7f32','Rookie':'#5a5240'
+  };
+  return map[tier] || '#5a5240';
+}
+
+function getTier(elo) {
+  if (elo >= 2400) return {name:'Grandmaster',icon:'👑'};
+  if (elo >= 2200) return {name:'Master',icon:'🔥'};
+  if (elo >= 2000) return {name:'Diamond',icon:'💎'};
+  if (elo >= 1800) return {name:'Platinum',icon:'⚡'};
+  if (elo >= 1600) return {name:'Gold',icon:'🥇'};
+  if (elo >= 1400) return {name:'Silver',icon:'🥈'};
+  if (elo >= 1200) return {name:'Bronze',icon:'🥉'};
+  return {name:'Rookie',icon:'♟'};
+}
+
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast show ${type}`;
+  setTimeout(() => { t.className = 'toast'; }, 2500);
+}
+
+function renderProfile(p) {
+  profile = p;
+  // Avatar
+  const wrap = document.getElementById('avatar-wrap');
+  if (p.avatar) {
+    wrap.innerHTML = `<img src="${p.avatar}" alt="" onerror="this.parentElement.textContent='♟'"/>`;
+  }
+  document.getElementById('display-name').textContent = p.username || p.name || '—';
+  document.getElementById('display-email').textContent = p.email || '—';
+
+  // Tier
+  const tier = getTier(p.elo || 1000);
+  const tc = tierColor(tier.name);
+  document.getElementById('tier-display').textContent = `${tier.icon} ${tier.name}`;
+  document.getElementById('tier-display').style.color = tc;
+  document.getElementById('tier-display').style.borderColor = tc;
+
+  // Stats
+  document.getElementById('stat-elo').textContent = p.elo || 1000;
+  document.getElementById('stat-wins').textContent = p.wins || 0;
+  document.getElementById('stat-losses').textContent = p.losses || 0;
+  const wr = p.gamesPlayed > 0 ? Math.round((p.wins / p.gamesPlayed) * 100) : 0;
+  document.getElementById('stat-wr').textContent = wr + '%';
+
+  // Username field
+  if (p.username) {
+    document.getElementById('username-input').value = p.username;
+  }
+
+  // Country field
+  if (p.country) {
+    selectedCountryCode = p.country;
+    const c = COUNTRIES.find(c => c.code === p.country);
+    if (c) document.getElementById('country-input').value = `${flag(c.code)} ${c.name}`;
+  }
+}
+
+// ── Username ──────────────────────────────────────────────────────────────
+document.getElementById('username-input').addEventListener('input', function() {
+  clearTimeout(usernameTimer);
+  const val = this.value.trim();
+  const hint = document.getElementById('username-hint');
+
+  if (!val) { hint.textContent = '3–20 characters, letters/numbers/underscores only'; hint.className = 'field-hint'; this.className = ''; return; }
+  if (val.length < 3) { hint.textContent = 'Too short'; hint.className = 'field-hint error'; this.className = 'error'; return; }
+  if (!/^[a-zA-Z0-9_]+$/.test(val)) { hint.textContent = 'Letters, numbers and underscores only'; hint.className = 'field-hint error'; this.className = 'error'; return; }
+
+  hint.textContent = 'Checking availability…'; hint.className = 'field-hint'; this.className = '';
+
+  usernameTimer = setTimeout(async () => {
+    try {
+      const res = await fetch(`${CFG.gameUrl}/game/check-username?u=${encodeURIComponent(val)}`);
+      const data = await res.json();
+      if (data.available || val === profile?.username) {
+        hint.textContent = '✓ Available'; hint.className = 'field-hint ok';
+        document.getElementById('username-input').className = 'ok';
+      } else {
+        hint.textContent = '✗ Already taken'; hint.className = 'field-hint error';
+        document.getElementById('username-input').className = 'error';
+      }
+    } catch { hint.textContent = 'Could not check'; hint.className = 'field-hint'; }
+  }, 600);
+});
+
+async function saveUsername() {
+  const val = document.getElementById('username-input').value.trim();
+  if (!val || val.length < 3) { showToast('Enter a valid username', 'error'); return; }
+  if (!/^[a-zA-Z0-9_]+$/.test(val)) { showToast('Invalid characters', 'error'); return; }
+
+  const btn = document.getElementById('save-username-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  try {
+    const res = await fetch(`${CFG.gameUrl}/game/profile`, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: val })
+    });
+    const data = await res.json();
+    if (data.success) {
+      profile = data.profile;
+      document.getElementById('display-name').textContent = val;
+      showToast('Username saved ✓', 'success');
+    } else {
+      showToast(data.error || 'Failed to save', 'error');
+    }
+  } catch { showToast('Network error', 'error'); }
+
+  btn.disabled = false; btn.textContent = 'Save Username';
+}
+
+// ── Country ───────────────────────────────────────────────────────────────
+function filterCountries(query) {
+  const dd = document.getElementById('country-dropdown');
+  const filtered = query
+    ? COUNTRIES.filter(c => c.name.toLowerCase().includes(query.toLowerCase()))
+    : COUNTRIES;
+  dd.innerHTML = filtered.map(c =>
+    `<div class="country-option" onclick="selectCountry('${c.code}','${c.name}')">
+      ${flag(c.code)} ${c.name}
+    </div>`
+  ).join('');
+  dd.classList.add('show');
+}
+
+function showCountryDropdown() { filterCountries(document.getElementById('country-input').value); }
+function hideCountryDropdown() { document.getElementById('country-dropdown').classList.remove('show'); }
+
+function selectCountry(code, name) {
+  selectedCountryCode = code;
+  document.getElementById('country-input').value = `${flag(code)} ${name}`;
+  hideCountryDropdown();
+}
+
+async function saveCountry() {
+  if (!selectedCountryCode) { showToast('Select a country first', 'error'); return; }
+  const btn = document.getElementById('save-country-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  try {
+    const res = await fetch(`${CFG.gameUrl}/game/profile`, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ country: selectedCountryCode })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Country saved ✓', 'success');
+    } else {
+      showToast(data.error || 'Failed to save', 'error');
+    }
+  } catch { showToast('Network error', 'error'); }
+
+  btn.disabled = false; btn.textContent = 'Save Country';
+}
+
+// ── Logout ────────────────────────────────────────────────────────────────
+function logout() {
+  localStorage.removeItem('regizs_token');
+  window.location.href = 'index.html';
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────
+async function boot() {
+  if (!authToken) { window.location.href = 'index.html'; return; }
+  try {
+    const res = await fetch(CONFIG_URL);
+    CFG = await res.json();
+  } catch { return; }
+
+  // Load profile
+  try {
+    const [authRes, gameRes] = await Promise.all([
+      fetch(`${CFG.authUrl}/auth/profile`, { headers: { 'Authorization': `Bearer ${authToken}` } }),
+      fetch(`${CFG.gameUrl}/game/profile`, { headers: { 'Authorization': `Bearer ${authToken}` } })
+    ]);
+    const authData = await authRes.json();
+    const gameData = await gameRes.json();
+    if (!authData.user) { window.location.href = 'index.html'; return; }
+    const merged = { ...authData.user, ...(gameData.profile || {}) };
+    renderProfile(merged);
+  } catch { showToast('Failed to load profile', 'error'); }
+
+  // Populate country dropdown initially
+  filterCountries('');
+  hideCountryDropdown();
+}
+
+boot();
+</script>
+</body>
+</html>
