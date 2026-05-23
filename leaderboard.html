@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Regizs · Leaderboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #07070d;
+  --surface: #0f0f1a;
+  --surface2: #161625;
+  --border: #1e1e32;
+  --gold: #c8a84b;
+  --gold-dim: #6a5520;
+  --ivory: #f0ead6;
+  --text: #c8bfa0;
+  --text-dim: #5a5240;
+  --gm:   #ff4d4d;
+  --master: #ff8c00;
+  --diamond: #b44dff;
+  --platinum: #00cfff;
+  --gold-tier: #ffd700;
+  --silver: #c0c0c0;
+  --bronze: #cd7f32;
+  --rookie: #5a5240;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Crimson Pro', serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Background */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 80% 40% at 50% -10%, #1a0f2e 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 90% 90%, #0d1a10 0%, transparent 50%);
+  pointer-events: none; z-index: 0;
+}
+
+.page { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 0 0 80px; }
+
+/* ── Header ── */
+.lb-header {
+  padding: 20px 16px 0;
+  text-align: center;
+  position: relative;
+}
+.back-btn {
+  position: absolute; left: 16px; top: 22px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 10px;
+  color: var(--text-dim); font-size: 0.7rem;
+  font-family: 'Cinzel', serif; letter-spacing: 0.05em;
+  cursor: pointer; text-decoration: none;
+  transition: color 0.2s, border-color 0.2s;
+}
+.back-btn:hover { color: var(--gold); border-color: var(--gold-dim); }
+.lb-title {
+  font-family: 'Cinzel', serif; font-weight: 900;
+  font-size: 1.6rem; letter-spacing: 0.1em;
+  color: var(--gold);
+  text-shadow: 0 0 40px rgba(200,168,75,0.3);
+}
+.lb-subtitle {
+  font-size: 0.7rem; color: var(--text-dim);
+  letter-spacing: 0.15em; text-transform: uppercase;
+  margin-top: 2px;
+}
+
+/* ── Season bar ── */
+.season-bar {
+  margin: 14px 16px 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex; align-items: center; gap: 12px;
+}
+.season-info { flex: 1; }
+.season-name {
+  font-family: 'Cinzel', serif; font-size: 0.72rem;
+  color: var(--gold); letter-spacing: 0.08em;
+}
+.season-sub { font-size: 0.62rem; color: var(--text-dim); margin-top: 1px; }
+.player-count {
+  text-align: right;
+}
+.player-count-num {
+  font-family: 'Space Mono', monospace;
+  font-size: 1rem; color: var(--ivory);
+}
+.player-count-label { font-size: 0.58rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* ── My rank banner ── */
+.my-rank-banner {
+  margin: 10px 16px 0;
+  background: linear-gradient(135deg, #1a1200, #0a0a00);
+  border: 1px solid var(--gold-dim);
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: none; align-items: center; gap: 10px;
+}
+.my-rank-banner.show { display: flex; }
+.my-rank-pos {
+  font-family: 'Cinzel', serif; font-size: 1.1rem;
+  color: var(--gold); font-weight: 900; min-width: 36px;
+}
+.my-rank-info { flex: 1; }
+.my-rank-name { font-family: 'Cinzel', serif; font-size: 0.75rem; color: var(--ivory); }
+.my-rank-elo { font-size: 0.65rem; color: var(--gold); margin-top: 1px; }
+
+/* ── Top 3 podium ── */
+.podium {
+  margin: 14px 16px 0;
+  display: grid;
+  grid-template-columns: 1fr 1.15fr 1fr;
+  gap: 8px;
+  align-items: end;
+}
+.podium-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 8px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s;
+}
+.podium-card:hover { transform: translateY(-2px); }
+.podium-card.rank-1 {
+  border-color: #c8a84b;
+  background: linear-gradient(180deg, #1a1200 0%, #0d0d00 100%);
+  padding-top: 18px;
+}
+.podium-card.rank-2 {
+  border-color: #5a5a5a;
+  background: linear-gradient(180deg, #141414 0%, #0a0a0a 100%);
+}
+.podium-card.rank-3 {
+  border-color: #6b3d1e;
+  background: linear-gradient(180deg, #140a00 0%, #0a0500 100%);
+}
+.podium-crown {
+  font-size: 1.1rem;
+  position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
+}
+.podium-avatar {
+  width: 48px; height: 48px; border-radius: 50%;
+  margin: 0 auto 6px;
+  border: 2px solid var(--border);
+  background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem; overflow: hidden;
+}
+.podium-card.rank-1 .podium-avatar { border-color: #c8a84b; width: 56px; height: 56px; }
+.podium-card.rank-2 .podium-avatar { border-color: #888; }
+.podium-card.rank-3 .podium-avatar { border-color: #8b4513; }
+.podium-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.podium-rank {
+  font-family: 'Cinzel', serif; font-size: 0.65rem;
+  letter-spacing: 0.1em; color: var(--text-dim); margin-bottom: 2px;
+}
+.podium-name {
+  font-family: 'Cinzel', serif; font-size: 0.68rem;
+  color: var(--ivory); letter-spacing: 0.04em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.podium-flag { font-size: 0.9rem; }
+.podium-elo {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.8rem; color: var(--gold); margin-top: 3px;
+}
+.podium-tier {
+  font-size: 0.55rem; letter-spacing: 0.08em;
+  text-transform: uppercase; margin-top: 2px;
+  opacity: 0.8;
+}
+
+/* ── List ── */
+.lb-list { margin: 12px 16px 0; display: flex; flex-direction: column; gap: 6px; }
+
+.lb-row {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.lb-row:hover { border-color: var(--gold-dim); background: var(--surface2); }
+.lb-row.is-me {
+  border-color: var(--gold-dim);
+  background: linear-gradient(135deg, #1a1200, #0d0a00);
+}
+
+.lb-pos {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem; color: var(--text-dim);
+  min-width: 24px; text-align: center;
+}
+.lb-pos.top3 { color: var(--gold); font-weight: 700; }
+
+.lb-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--surface2); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.9rem; overflow: hidden; flex-shrink: 0;
+}
+.lb-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+
+.lb-info { flex: 1; min-width: 0; }
+.lb-name-row { display: flex; align-items: center; gap: 5px; }
+.lb-name {
+  font-family: 'Cinzel', serif; font-size: 0.75rem;
+  color: var(--ivory); letter-spacing: 0.03em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 120px;
+}
+.lb-flag { font-size: 0.85rem; }
+.lb-tier-badge {
+  font-size: 0.48rem; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 1px 5px; border-radius: 3px; border: 1px solid currentColor;
+  opacity: 0.8; flex-shrink: 0;
+}
+.lb-form { display: flex; gap: 2px; margin-top: 3px; }
+.form-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+}
+.form-dot.W { background: #3a8a3a; }
+.form-dot.L { background: #8a2020; }
+.form-dot.D { background: #6a6020; }
+
+.lb-stats { text-align: right; flex-shrink: 0; }
+.lb-elo {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.85rem; color: var(--ivory);
+}
+.lb-winrate { font-size: 0.62rem; color: var(--text-dim); margin-top: 1px; }
+
+/* ── Loading / empty ── */
+.lb-loading {
+  text-align: center; padding: 40px 16px;
+  color: var(--text-dim); font-size: 0.8rem;
+}
+.lb-spinner {
+  width: 28px; height: 28px; border: 2px solid var(--border);
+  border-top-color: var(--gold); border-radius: 50%;
+  animation: spin 0.8s linear infinite; margin: 0 auto 12px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Bottom nav ── */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 100%; max-width: 480px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 8px 0 12px;
+  z-index: 100;
+}
+.nav-item {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; gap: 3px;
+  text-decoration: none; cursor: pointer;
+  color: var(--text-dim);
+  font-family: 'Cinzel', serif; font-size: 0.5rem;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  transition: color 0.2s;
+}
+.nav-item.active { color: var(--gold); }
+.nav-item:hover { color: var(--gold); }
+.nav-icon { font-size: 1.1rem; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="lb-header">
+    <a class="back-btn" href="index.html">← Play</a>
+    <div class="lb-title">LEADERBOARD</div>
+    <div class="lb-subtitle">Global Rankings · Season 1</div>
+  </div>
+
+  <div class="season-bar">
+    <div class="season-info">
+      <div class="season-name">⚔ Season 1</div>
+      <div class="season-sub" id="season-dates">May 2026</div>
+    </div>
+    <div class="player-count">
+      <div class="player-count-num" id="player-count">—</div>
+      <div class="player-count-label">Players</div>
+    </div>
+  </div>
+
+  <!-- My rank -->
+  <div class="my-rank-banner" id="my-rank-banner">
+    <div class="my-rank-pos" id="my-rank-pos">#—</div>
+    <div class="my-rank-info">
+      <div class="my-rank-name" id="my-rank-name">You</div>
+      <div class="my-rank-elo" id="my-rank-elo">ELO —</div>
+    </div>
+  </div>
+
+  <!-- Top 3 podium -->
+  <div class="podium" id="podium" style="display:none;"></div>
+
+  <!-- Rest of list -->
+  <div class="lb-list" id="lb-list">
+    <div class="lb-loading">
+      <div class="lb-spinner"></div>
+      Loading rankings…
+    </div>
+  </div>
+</div>
+
+<!-- Bottom nav -->
+<nav class="bottom-nav">
+  <a class="nav-item" href="index.html">
+    <span class="nav-icon">♟</span>
+    <span>Play</span>
+  </a>
+  <div class="nav-item active">
+    <span class="nav-icon">🏆</span>
+    <span>Rankings</span>
+  </div>
+  <a class="nav-item" href="profile.html">
+    <span class="nav-icon">👤</span>
+    <span>Profile</span>
+  </a>
+</nav>
+
+<script>
+const CONFIG_URL = 'https://regis-auth.kerosoftz522.workers.dev/config';
+let CFG = { authUrl:'', gameUrl:'', googleClientId:'' };
+let authToken = localStorage.getItem('regizs_token');
+let myGoogleSub = null;
+
+function tierColor(tier) {
+  const map = {
+    'Grandmaster':'#ff4d4d','Master':'#ff8c00','Diamond':'#b44dff',
+    'Platinum':'#00cfff','Gold':'#ffd700','Silver':'#c0c0c0',
+    'Bronze':'#cd7f32','Rookie':'#5a5240'
+  };
+  return map[tier] || '#5a5240';
+}
+
+function renderPodium(top3) {
+  const podium = document.getElementById('podium');
+  podium.style.display = 'grid';
+  // Order: 2nd, 1st, 3rd
+  const order = [top3[1], top3[0], top3[2]].filter(Boolean);
+  const ranks = top3[1] ? [2,1,3] : [1];
+  const crowns = ['🥈','👑','🥉'];
+
+  podium.innerHTML = order.map((p, i) => {
+    const rank = ranks[i];
+    const crown = rank === 1 ? '👑' : rank === 2 ? '🥈' : '🥉';
+    const avatarHtml = p.avatar
+      ? `<img src="${p.avatar}" alt="" onerror="this.parentElement.textContent='♟'"/>`
+      : '♟';
+    return `
+      <div class="podium-card rank-${rank}">
+        ${rank === 1 ? `<div class="podium-crown">${crown}</div>` : ''}
+        <div class="podium-avatar">${avatarHtml}</div>
+        <div class="podium-rank">#${rank}</div>
+        <div class="podium-flag">${p.flag || ''}</div>
+        <div class="podium-name">${p.name}</div>
+        <div class="podium-elo">${p.elo}</div>
+        <div class="podium-tier" style="color:${tierColor(p.tier)}">${p.tier || ''}</div>
+      </div>`;
+  }).join('');
+}
+
+function renderRow(p, rank) {
+  const isMe = p.googleSub === myGoogleSub;
+  const avatarHtml = p.avatar
+    ? `<img src="${p.avatar}" alt="" onerror="this.parentElement.textContent='♟'"/>`
+    : '♟';
+  const formHtml = (p.recentForm || []).map(f =>
+    `<div class="form-dot ${f}"></div>`
+  ).join('');
+  const tc = tierColor(p.tier);
+
+  return `
+    <div class="lb-row ${isMe ? 'is-me' : ''}">
+      <div class="lb-pos ${rank <= 3 ? 'top3' : ''}">${rank}</div>
+      <div class="lb-avatar">${avatarHtml}</div>
+      <div class="lb-info">
+        <div class="lb-name-row">
+          <div class="lb-name">${p.name}</div>
+          ${p.flag ? `<span class="lb-flag">${p.flag}</span>` : ''}
+          <span class="lb-tier-badge" style="color:${tc};border-color:${tc}">${p.tier || 'Rookie'}</span>
+        </div>
+        <div class="lb-form">${formHtml}</div>
+      </div>
+      <div class="lb-stats">
+        <div class="lb-elo">${p.elo}</div>
+        <div class="lb-winrate">${p.winRate || 0}% WR</div>
+      </div>
+    </div>`;
+}
+
+async function loadLeaderboard() {
+  try {
+    const res = await fetch(`${CFG.gameUrl}/game/leaderboard`);
+    const data = await res.json();
+    const board = data.leaderboard || [];
+
+    document.getElementById('player-count').textContent = board.length;
+
+    if (!board.length) {
+      document.getElementById('lb-list').innerHTML = `
+        <div class="lb-loading">No players yet — be the first!</div>`;
+      return;
+    }
+
+    // Find my rank
+    if (myGoogleSub) {
+      const myIdx = board.findIndex(p => p.googleSub === myGoogleSub);
+      if (myIdx >= 0) {
+        const me = board[myIdx];
+        document.getElementById('my-rank-pos').textContent = `#${myIdx + 1}`;
+        document.getElementById('my-rank-name').textContent = me.name;
+        document.getElementById('my-rank-elo').textContent = `ELO ${me.elo} · ${me.tier}`;
+        document.getElementById('my-rank-banner').classList.add('show');
+      }
+    }
+
+    // Podium (top 3)
+    if (board.length >= 1) renderPodium(board.slice(0, 3));
+
+    // Rest (4+)
+    const rest = board.slice(3);
+    if (rest.length) {
+      document.getElementById('lb-list').innerHTML = rest.map((p, i) =>
+        renderRow(p, i + 4)
+      ).join('');
+    } else {
+      document.getElementById('lb-list').innerHTML = '';
+    }
+
+  } catch {
+    document.getElementById('lb-list').innerHTML = `
+      <div class="lb-loading">Failed to load — check your connection</div>`;
+  }
+}
+
+async function getMyIdentity() {
+  if (!authToken) return;
+  try {
+    const res = await fetch(`${CFG.authUrl}/auth/profile`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    const data = await res.json();
+    if (data.user) myGoogleSub = data.user.sub;
+  } catch {}
+}
+
+async function boot() {
+  try {
+    const res = await fetch(CONFIG_URL);
+    CFG = await res.json();
+  } catch { return; }
+  await getMyIdentity();
+  await loadLeaderboard();
+}
+
+boot();
+</script>
+</body>
+</html>
