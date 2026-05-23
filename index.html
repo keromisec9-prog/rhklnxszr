@@ -403,6 +403,29 @@
     background: none; font-family: 'Cinzel', serif; letter-spacing: 0.04em;
   }
   .logout-btn:hover { color: #c06060; border-color: #5a2020; }
+
+  /* Sync status bar */
+  .sync-bar {
+    position: fixed; bottom: 16px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 7px 16px;
+    font-size: 0.72rem; font-family: 'Cinzel', serif;
+    color: var(--text-dim); letter-spacing: 0.05em;
+    display: flex; align-items: center; gap: 8px;
+    z-index: 300; transition: opacity 0.4s;
+    opacity: 0; pointer-events: none; white-space: nowrap;
+  }
+  .sync-bar.show { opacity: 1; }
+  .sync-bar.saved { border-color: #3a6a3a; color: #5ab05a; }
+  .sync-bar.error { border-color: #5a2020; color: #c06060; }
+  .sync-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor;
+    animation: pulse 0.8s ease-in-out infinite alternate;
+  }
+  .sync-bar.saved .sync-dot,
+  .sync-bar.error .sync-dot { animation: none; }
 </style>
 </head>
 <body>
@@ -548,6 +571,12 @@
     <h3>PROMOTE PAWN</h3>
     <div class="promo-pieces" id="promo-pieces"></div>
   </div>
+</div>
+
+<!-- Sync status bar -->
+<div class="sync-bar" id="sync-bar">
+  <div class="sync-dot"></div>
+  <span id="sync-text">Saving…</span>
 </div>
 
 <script>
@@ -704,9 +733,23 @@ function logout() {
   initOneTap();
 }
 
-// ── Save game result ──────────────────────────────────────────────────────
+// ── Sync result (fire-and-forget, never blocks gameplay) ──────────────────
+let syncTimer = null;
+
+function showSyncBar(state, text) {
+  const bar = document.getElementById('sync-bar');
+  const txt = document.getElementById('sync-text');
+  bar.className = 'sync-bar show' + (state ? ` ${state}` : '');
+  txt.textContent = text;
+  clearTimeout(syncTimer);
+  if (state === 'saved' || state === 'error') {
+    syncTimer = setTimeout(() => { bar.className = 'sync-bar'; }, 2500);
+  }
+}
+
 async function saveGameResult(result) {
   if (!authToken) return;
+  showSyncBar('', 'Saving result…');
   try {
     const res = await fetch(`${CFG.gameUrl}/game/result`, {
       method: 'POST',
@@ -716,7 +759,10 @@ async function saveGameResult(result) {
     const data = await res.json();
     if (data.newElo) document.getElementById('user-elo').textContent = `ELO ${data.newElo}`;
     if (data.newlyUnlocked) { unlockedUpTo = data.unlockedUpTo; beaten = data.beaten; }
-  } catch {}
+    showSyncBar('saved', 'Result saved ✓');
+  } catch {
+    showSyncBar('error', 'Sync failed — will retry next game');
+  }
 }
 
 // ── Chess Engine ──────────────────────────────────────────────────────────
@@ -742,7 +788,19 @@ function getPieceSVG(piece) {
 const PIECES={wK:'♔',wQ:'♕',wR:'♖',wB:'♗',wN:'♘',wP:'♙',bK:'♚',bQ:'♛',bR:'♜',bB:'♝',bN:'♞',bP:'♟'};
 const PIECE_VALUES={K:0,Q:9,R:5,B:3.25,N:3,P:1};
 const PST={P:[[0,0,0,0,0,0,0,0],[50,50,50,50,50,50,50,50],[10,10,20,30,30,20,10,10],[5,5,10,25,25,10,5,5],[0,0,0,20,20,0,0,0],[5,-5,-10,0,0,-10,-5,5],[5,10,10,-20,-20,10,10,5],[0,0,0,0,0,0,0,0]],N:[[-50,-40,-30,-30,-30,-30,-40,-50],[-40,-20,0,0,0,0,-20,-40],[-30,0,10,15,15,10,0,-30],[-30,5,15,20,20,15,5,-30],[-30,0,15,20,20,15,0,-30],[-30,5,10,15,15,10,5,-30],[-40,-20,0,5,5,0,-20,-40],[-50,-40,-30,-30,-30,-30,-40,-50]],B:[[-20,-10,-10,-10,-10,-10,-10,-20],[-10,0,0,0,0,0,0,-10],[-10,0,5,10,10,5,0,-10],[-10,5,5,10,10,5,5,-10],[-10,0,10,10,10,10,0,-10],[-10,10,10,10,10,10,10,-10],[-10,5,0,0,0,0,5,-10],[-20,-10,-10,-10,-10,-10,-10,-20]],R:[[0,0,0,0,0,0,0,0],[5,10,10,10,10,10,10,5],[-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],[0,0,0,5,5,0,0,0]],Q:[[-20,-10,-10,-5,-5,-10,-10,-20],[-10,0,0,0,0,0,0,-10],[-10,0,5,5,5,5,0,-10],[-5,0,5,5,5,5,0,-5],[0,0,5,5,5,5,0,-5],[-10,5,5,5,5,5,0,-10],[-10,0,5,0,0,0,0,-10],[-20,-10,-10,-5,-5,-10,-10,-20]],K:[[-30,-40,-40,-50,-50,-40,-40,-30],[-30,-40,-40,-50,-50,-40,-40,-30],[-30,-40,-40,-50,-50,-40,-40,-30],[-30,-40,-40,-50,-50,-40,-40,-30],[-20,-30,-30,-40,-40,-30,-30,-20],[-10,-20,-20,-20,-20,-20,-20,-10],[20,20,0,0,0,0,20,20],[20,30,10,0,0,10,30,20]]};
-const LEVELS=[{label:'Novice',depth:1,randErr:0.9},{label:'Beginner',depth:1,randErr:0.6},{label:'Casual',depth:2,randErr:0.35},{label:'Amateur',depth:2,randErr:0.15},{label:'Club',depth:3,randErr:0.05},{label:'Advanced',depth:3,randErr:0.01},{label:'Expert',depth:4,randErr:0},{label:'Master',depth:4,randErr:0},{label:'GM',depth:5,randErr:0},{label:'Magnus',depth:5,randErr:0}];
+// Mobile-optimized: max depth 2, difficulty via randomness not depth
+const LEVELS=[
+  {label:'Novice',  depth:1,randErr:0.95},
+  {label:'Beginner',depth:1,randErr:0.80},
+  {label:'Casual',  depth:1,randErr:0.60},
+  {label:'Amateur', depth:2,randErr:0.40},
+  {label:'Club',    depth:2,randErr:0.25},
+  {label:'Advanced',depth:2,randErr:0.12},
+  {label:'Expert',  depth:2,randErr:0.05},
+  {label:'Master',  depth:2,randErr:0.02},
+  {label:'GM',      depth:2,randErr:0.01},
+  {label:'Magnus',  depth:2,randErr:0.00},
+];
 
 let board=[],turn='w',selected=null,hintsOn=true;
 let lastMove=null,moveHistory=[],boardHistory=[];
@@ -777,7 +835,20 @@ function doComputerMove(){thinking=true;updateStatusThinking();setTimeout(()=>{c
 function handleWin(){const lvlIdx=currentLevel-1;beaten[lvlIdx]=true;let newlyUnlocked=false;if(currentLevel===unlockedUpTo&&currentLevel<10){unlockedUpTo=currentLevel+1;newlyUnlocked=true;}renderLevels();return newlyUnlocked;}
 function updateStatus(status){const ind=document.getElementById('status-indicator');const txt=document.getElementById('status-text');if(status==='checkmate'){gameOver=true;if(turn==='w'){oppScore++;document.getElementById('opp-score').textContent=oppScore;showGameOver('DEFEAT','Computer wins by checkmate',false);}else{playerScore++;document.getElementById('player-score').textContent=playerScore;const unlocked=handleWin();showGameOver('VICTORY!','You win by checkmate!',unlocked);}}else if(status==='stalemate'||status==='draw-50'){gameOver=true;showGameOver('DRAW',status==='stalemate'?'Stalemate':'50-move rule',false);}else{const opp2=turn==='w'?'b':'w';const kp=findKing(board,turn);const check=kp&&isAttacked(board,kp[0],kp[1],opp2);if(turn==='w'){ind.className='status-indicator white';txt.innerHTML=check?'<strong>Check!</strong> — defend your king':'<strong>Your turn</strong> — select a piece';}else{ind.className='status-indicator black';txt.innerHTML='<strong>Computer</strong> is thinking…';}}}
 function updateStatusThinking(){document.getElementById('status-indicator').className='status-indicator thinking';document.getElementById('status-text').innerHTML='<strong>Computer</strong> is calculating…';}
-async function showGameOver(title,sub,unlocked){const result=title==='VICTORY!'?'win':title==='DRAW'?'draw':'loss';await saveGameResult(result);renderLevels();document.getElementById('game-over-title').textContent=title;document.getElementById('game-over-sub').textContent=sub;const um=document.getElementById('unlock-msg');if(unlocked&&currentLevel<10){um.textContent=`🔓 Level ${currentLevel+1} · ${LEVELS[currentLevel].label} unlocked!`;}else if(title==='VICTORY!'&&currentLevel===10){um.textContent='🏆 Maximum level mastered!';}else{um.textContent='';}document.getElementById('game-over-banner').classList.add('show');}
+async function showGameOver(title,sub,unlocked){
+  // Show banner immediately — no waiting
+  document.getElementById('game-over-title').textContent=title;
+  document.getElementById('game-over-sub').textContent=sub;
+  const um=document.getElementById('unlock-msg');
+  if(unlocked&&currentLevel<10){um.textContent=`🔓 Level ${currentLevel+1} · ${LEVELS[currentLevel].label} unlocked!`;}
+  else if(title==='VICTORY!'&&currentLevel===10){um.textContent='🏆 Maximum level mastered!';}
+  else{um.textContent='';}
+  document.getElementById('game-over-banner').classList.add('show');
+  renderLevels();
+  // Sync in background — never blocks UI
+  const result=title==='VICTORY!'?'win':title==='DRAW'?'draw':'loss';
+  saveGameResult(result); // intentionally not awaited
+}
 function updateCaptured(){const wP={},bP={};for(let r=0;r<8;r++)for(let f=0;f<8;f++){const p=board[r][f];if(!p)continue;if(p[0]==='w')wP[p]=(wP[p]||0)+1;else bP[p]=(bP[p]||0)+1;}const start={P:8,N:2,B:2,R:2,Q:1,K:1};let wCap='',bCap='';['Q','R','B','N','P'].forEach(t=>{for(let i=0;i<((start[t]||0)-(wP['w'+t]||0));i++)bCap+=PIECES['w'+t];for(let i=0;i<((start[t]||0)-(bP['b'+t]||0));i++)wCap+=PIECES['b'+t];});document.getElementById('opp-captured').textContent=wCap||'';document.getElementById('player-captured').textContent=bCap||'';}
 function renderMoveLog(){const el=document.getElementById('move-log');el.innerHTML='';moveLog.forEach((entry,i)=>{const d=document.createElement('span');d.className='move-entry';d.innerHTML=`<span class="move-num">${i+1}.</span><span class="move-w">${entry.w}</span> <span class="move-b">${entry.b}</span> `;el.appendChild(d);});el.scrollLeft=el.scrollWidth;}
 function toggleHints(){hintsOn=!hintsOn;document.getElementById('hint-toggle-sw').className='toggle-switch'+(hintsOn?' on':'');renderBoard();}
